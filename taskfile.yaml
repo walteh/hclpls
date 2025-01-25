@@ -1,0 +1,106 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+vars:
+    GO_MODULES:
+        sh: cat go.work | grep -oEh  '\t+(\./*[^[:space:]]*)' | tr -d '\t'
+
+includes:
+    tool:
+        optional: true
+        taskfile: "./gen/taskfiles/Taskfile.tools.yml"
+    script:
+        optional: true
+        taskfile: "./gen/taskfiles/Taskfile.scripts.yml"
+
+tasks:
+    generate-taskfiles:
+        run: once
+        env:
+            {
+                OUTPUT_DIR: "./out",
+                SCRIPTS_DIR: "./scripts",
+                TASKFILE_OUTPUT_DIR: "./gen/taskfiles",
+            }
+        cmds:
+            - ./scripts/setup-tools-for-local.sh --generate-taskfiles --skip-build
+        sources:
+            - ./tools/**/*
+            - ./scripts/**/*
+        generates:
+            - "./gen/taskfiles/**/*"
+
+    local-setup-tools:
+        run: once
+        deps: [generate-taskfiles]
+        env:
+            {
+                SCRIPTS_DIR: "./scripts",
+                TASKFILE_OUTPUT_DIR: "./gen/taskfiles",
+                TOOLS_OUTPUT_DIR: "./out/tools",
+            }
+        cmds:
+            - ./scripts/setup-tools-for-local.sh
+        sources:
+            - ./tools/**/*
+            - ./scripts/setup-tools-for-local.sh
+            - ./scripts/build-tool.sh
+            - go.work.sum
+        generates:
+            - ./out/tools/**/*
+
+    mockery:
+        cmds:
+            - ./scripts/run-tool.sh mockery
+            - find ./gen/mockery -type f -not -mmin -1 -delete
+        generates:
+            - ./gen/mockery/*.go
+        sources:
+            - ./**/*.go
+
+    test:
+        cmd: go test ./...
+
+    install-executables:
+        cmds:
+            - go install ./cmd/gotmpls
+
+    copyrc:
+        desc: copyrc
+        cmds:
+            - ./scripts/run-tool.sh copyrc -config=.copyrc.hcl
+        sources:
+            - .copyrc.hcl
+        generates:
+            - "**/*.copyrc.lock"
+        status:
+            - ./scripts/run-tool.sh copyrc -config=.copyrc.hcl -status
+
+    copywrite:
+        cmds:
+            - ./scripts/run-tool.sh addlicense -c="walteh LLC" -l="apache"  "./cmd" "./pkg" "./scripts"
+
+    go-mod-tidy:
+        env:
+            {
+                GOPROXY: https://proxy.golang.org,
+                GOSUMDB: sum.golang.org,
+                GOPRIVATE: github.com/walteh,
+            }
+        cmds:
+            - for: { var: GO_MODULES }
+              cmd: |
+                  cd {{.ITEM}} && go mod tidy
+
+    go-mod-upgrade:
+        run: once
+        deps: [local-setup-tools]
+        env:
+            {
+                GOPROXY: https://proxy.golang.org,
+                GOSUMDB: sum.golang.org,
+                GOPRIVATE: github.com/walteh,
+            }
+        cmds:
+            - ./scripts/run-tool.sh go-mod-upgrade --force
