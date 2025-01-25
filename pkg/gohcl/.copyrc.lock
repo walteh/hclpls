@@ -1,0 +1,76 @@
+{
+	"last_updated": "0001-01-01T00:00:00Z",
+	"commit_hash": "da7ca9a43345aab7e6785c97a1a09fdcf1d05757",
+	"branch": "main",
+	"coppied_files": {
+		"decode.copy.go": {
+			"file": "decode.copy.go",
+			"source": "github.com/hashicorp/hcl@da7ca9a43345aab7e6785c97a1a09fdcf1d05757",
+			"permalink": "https://raw.githubusercontent.com/hashicorp/hcl/da7ca9a43345aab7e6785c97a1a09fdcf1d05757/gohcl/decode.go",
+			"last_updated": "2025-01-25T12:46:05.51254Z",
+			"changes": [
+				"Line 51: Replaced 'return decodeBodyToStruct(body, ctx, val)' with 'return DecodeBodyToStruct(body, ctx, val, val.Type())'"
+			]
+		},
+		"doc.copy.go": {
+			"file": "doc.copy.go",
+			"source": "github.com/hashicorp/hcl@da7ca9a43345aab7e6785c97a1a09fdcf1d05757",
+			"permalink": "https://raw.githubusercontent.com/hashicorp/hcl/da7ca9a43345aab7e6785c97a1a09fdcf1d05757/gohcl/doc.go",
+			"last_updated": "2025-01-25T12:44:36.052693Z"
+		},
+		"encode.copy.go": {
+			"file": "encode.copy.go",
+			"source": "github.com/hashicorp/hcl@da7ca9a43345aab7e6785c97a1a09fdcf1d05757",
+			"permalink": "https://raw.githubusercontent.com/hashicorp/hcl/da7ca9a43345aab7e6785c97a1a09fdcf1d05757/gohcl/encode.go",
+			"last_updated": "2025-01-25T12:44:36.068646Z"
+		},
+		"schema.copy.go": {
+			"file": "schema.copy.go",
+			"source": "github.com/hashicorp/hcl@da7ca9a43345aab7e6785c97a1a09fdcf1d05757",
+			"permalink": "https://raw.githubusercontent.com/hashicorp/hcl/da7ca9a43345aab7e6785c97a1a09fdcf1d05757/gohcl/schema.go",
+			"last_updated": "2025-01-25T12:44:36.084257Z",
+			"changes": [
+				"Line 37: Replaced 'be struct, not %T\", val))' with 'be struct, not %s\", tty.String()))'"
+			]
+		},
+		"types.copy.go": {
+			"file": "types.copy.go",
+			"source": "github.com/hashicorp/hcl@da7ca9a43345aab7e6785c97a1a09fdcf1d05757",
+			"permalink": "https://raw.githubusercontent.com/hashicorp/hcl/da7ca9a43345aab7e6785c97a1a09fdcf1d05757/gohcl/types.go",
+			"last_updated": "2025-01-25T12:44:36.097468Z"
+		}
+	},
+	"generated_files": {},
+	"args": {
+		"src_repo": "github.com/hashicorp/hcl",
+		"src_ref": "main",
+		"src_path": "gohcl",
+		"copy_args": {
+			"replacements": [
+				{
+					"old": "github.com/hashicorp/hcl/v2/gohcl",
+					"new": "github.com/walteh/hclpls/pkg/gohcl"
+				},
+				{
+					"old": "func ImpliedBodySchema(val interface{}) (schema *hcl.BodySchema, partial bool) {\n\tty := reflect.TypeOf(val)",
+					"new": "func ImpliedBodySchema(tty reflect.Type) (schema *hcl.BodySchema, partial bool) {\n\tty := tty"
+				},
+				{
+					"old": "be struct, not %T\", val))",
+					"new": "be struct, not %s\", tty.String()))"
+				},
+				{
+					"old": "func decodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value) hcl.Diagnostics {\n\tschema, partial := ImpliedBodySchema(val.Interface())\n",
+					"new": "func DecodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value, tty reflect.Type) hcl.Diagnostics {\n\tschema, partial := ImpliedBodySchema(tty)\n"
+				},
+				{
+					"old": "return decodeBodyToStruct(body, ctx, val)",
+					"new": "return DecodeBodyToStruct(body, ctx, val, val.Type())"
+				}
+			],
+			"ignore_files": [
+				"**/*_test.go"
+			]
+		}
+	}
+}
