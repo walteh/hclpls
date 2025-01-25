@@ -1,12 +1,14 @@
-package generate
+package hclschema
 
 import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/walteh/hclpls/pkg/generate"
 )
 
-func (g *Generator) RecursiveReflectableType(name string) (reflect.Type, error) {
+func RecursiveReflectableType(g *generate.Generator, name string) (reflect.Type, error) {
 	structz, ok := g.Structs[name]
 	if !ok {
 		switch name {
@@ -71,7 +73,7 @@ func (g *Generator) RecursiveReflectableType(name string) (reflect.Type, error) 
 }
 
 // https://stackoverflow.com/questions/64196547/is-possible-to-reflect-an-struct-from-ast
-func (g *Generator) ToReflectableStruct() (reflect.Type, error) {
+func ToReflectableStruct(g *generate.Generator) (reflect.Type, error) {
 	rootFields := []reflect.StructField{}
 	// we want the root to take over and return a nested bunch of nested structs
 	for name, field := range g.Structs {

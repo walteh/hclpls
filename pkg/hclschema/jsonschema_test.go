@@ -35,14 +35,8 @@ func TestJSONSchemaToReflectable(t *testing.T) {
 				}{
 					Name: "test",
 				}
-				v := struct {
-					Root struct {
-						Name string `json:"name" hcl:"name"`
-					} `json:"Root" hcl:"Root"`
-				}{
-					Root: n,
-				}
-				return reflect.TypeOf(v)
+
+				return reflect.TypeOf(n)
 			},
 
 			wantErr: false,
