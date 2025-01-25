@@ -29,7 +29,7 @@ func DecodeHCL(ctx context.Context, hcls []byte, typ reflect.Type) (reflect.Valu
 
 	diags = gohcl.DecodeBodyToStruct(file.Body, ectx, val.Elem(), typ)
 	if diags.HasErrors() {
-		return reflect.Value{}, errors.Errorf("decoding hcl: %w", diags)
+		return reflect.Value{}, diags
 	}
 
 	return val, nil
@@ -58,36 +58,11 @@ func JSONSchemaToReflectable(jsonSchema []byte) (reflect.Type, error) {
 		return nil, errors.Errorf("creating types: %w", err)
 	}
 
-	reflectable, err := gen.ToReflectableStruct()
+	reflectable, err := ToReflectableStruct(gen)
 	if err != nil {
 		return nil, errors.Errorf("converting schema to reflectable: %w", err)
 	}
 
 	return reflectable, nil
 
-	// outputWriter := bytes.NewBuffer(nil)
-
-	// generate.Output(outputWriter, gen, "schema")
-
-	// data := outputWriter.Bytes()
-
-	// // Parse the generated code into AST
-	// fset := token.NewFileSet()
-	// file, err := parser.ParseFile(fset, "schema.go", data, parser.ParseComments)
-	// if err != nil {
-	// 	return reflect.Value{}, errors.Errorf("parsing generated code: %w", err)
-	// }
-
-	// // Convert AST to reflect types
-	// types, err := astToReflectTypes(file)
-	// if err != nil {
-	// 	return reflect.Value{}, errors.Errorf("converting ast to types: %w", err)
-	// }
-
-	// schemas, ok := gohcl.ImpliedBodySchema(types)
-	// if !ok {
-	// 	return reflect.Value{}, errors.New("generating implied body schema")
-	// }
-
-	// return reflect.ValueOf(schemas), nil
 }

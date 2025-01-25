@@ -10,6 +10,7 @@ package gohcl
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 
@@ -157,20 +158,20 @@ func getFieldTags(ty reflect.Type) *fieldTags {
 			continue
 		}
 
-		comma := strings.Index(tag, ",")
-		var name, kind string
-		if comma != -1 {
-			name = tag[:comma]
-			kind = tag[comma+1:]
-		} else {
-			name = tag
-			kind = "attr"
+
+		split := strings.Split(tag, ",")
+		name := split[0]
+		kinds := split[1:]
+
+		if !slices.Contains(kinds, "attr") && !slices.Contains(kinds, "block") && !slices.Contains(kinds, "label") {
+			kinds = append(kinds, "attr")
 		}
 
-		switch kind {
-		case "attr":
-			ret.Attributes[name] = i
-		case "block":
+		for _, kind := range kinds {
+			switch kind {
+			case "attr":
+				ret.Attributes[name] = i
+			case "block":
 			ret.Blocks[name] = i
 		case "label":
 			ret.Labels = append(ret.Labels, labelField{
@@ -190,7 +191,7 @@ func getFieldTags(ty reflect.Type) *fieldTags {
 			idx := i // copy, because this loop will continue assigning to i
 			ret.Body = &idx
 		case "optional":
-			ret.Attributes[name] = i
+			// ret.Attributes[name] = i
 			ret.Optional[name] = true
 		case "def_range":
 			if ret.DefRange != nil {
@@ -213,7 +214,8 @@ func getFieldTags(ty reflect.Type) *fieldTags {
 		case "attr_value_range":
 			ret.AttributeValueRange[name] = i
 		default:
-			panic(fmt.Sprintf("invalid hcl field tag kind %q on %s %q", kind, field.Type.String(), field.Name))
+				panic(fmt.Sprintf("invalid hcl field tag kind %q on %s %q", kind, field.Type.String(), field.Name))
+			}
 		}
 	}
 
