@@ -3,10 +3,9 @@ package hclschema_test
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"reflect"
-	"slices"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -88,10 +87,6 @@ func toAnonymousType(v interface{}) reflect.Type {
 		fields[i] = newField
 	}
 
-	slices.SortFunc(fields, func(a, b reflect.StructField) int {
-		return strings.Compare(a.Name, b.Name)
-	})
-
 	return reflect.StructOf(fields)
 }
 
@@ -121,40 +116,49 @@ func toAnonymousValue(v interface{}) interface{} {
 			continue
 		}
 
+		newField := newVal.Field(i)
 		switch field.Kind() {
 		case reflect.Ptr:
 			if field.IsNil() {
 				continue
 			}
-			newField := toAnonymousValue(field.Interface())
-			newVal.Field(i).Set(reflect.ValueOf(newField))
+			converted := toAnonymousValue(field.Interface())
+			if converted != nil {
+				newField.Set(reflect.ValueOf(converted))
+			}
 		case reflect.Slice:
 			if field.IsNil() {
 				continue
 			}
-			newSlice := reflect.MakeSlice(newType.Field(i).Type, field.Len(), field.Cap())
+			newSlice := reflect.MakeSlice(field.Type(), field.Len(), field.Cap())
 			for j := 0; j < field.Len(); j++ {
 				elem := toAnonymousValue(field.Index(j).Interface())
-				newSlice.Index(j).Set(reflect.ValueOf(elem))
+				if elem != nil {
+					newSlice.Index(j).Set(reflect.ValueOf(elem))
+				}
 			}
-			newVal.Field(i).Set(newSlice)
+			newField.Set(newSlice)
 		case reflect.Map:
 			if field.IsNil() {
 				continue
 			}
-			newMap := reflect.MakeMap(newType.Field(i).Type)
+			newMap := reflect.MakeMap(field.Type())
 			iter := field.MapRange()
 			for iter.Next() {
 				k := iter.Key()
 				v := toAnonymousValue(iter.Value().Interface())
-				newMap.SetMapIndex(k, reflect.ValueOf(v))
+				if v != nil {
+					newMap.SetMapIndex(k, reflect.ValueOf(v))
+				}
 			}
-			newVal.Field(i).Set(newMap)
+			newField.Set(newMap)
 		case reflect.Struct:
-			newField := toAnonymousValue(field.Interface())
-			newVal.Field(i).Set(reflect.ValueOf(newField))
+			converted := toAnonymousValue(field.Interface())
+			if converted != nil {
+				newField.Set(reflect.ValueOf(converted))
+			}
 		default:
-			newVal.Field(i).Set(field)
+			newField.Set(field)
 		}
 	}
 
@@ -187,9 +191,6 @@ func toAnonymousFieldType(t reflect.Type) reflect.Type {
 			}
 			fields[i] = newField
 		}
-		slices.SortFunc(fields, func(a, b reflect.StructField) int {
-			return strings.Compare(a.Name, b.Name)
-		})
 		return reflect.StructOf(fields)
 	default:
 		return t
@@ -198,14 +199,35 @@ func toAnonymousFieldType(t reflect.Type) reflect.Type {
 
 // Helper function to compare values for testing
 func compareValues(t *testing.T, expected, actual interface{}) bool {
-	expAnon := toAnonymousValue(expected)
-	actAnon := toAnonymousValue(actual)
+	// Convert both to JSON and back to normalize the structures
+	expectedJSON, err := json.Marshal(expected)
+	if err != nil {
+		t.Logf("Failed to marshal expected value: %v", err)
+		return false
+	}
 
-	de := reflect.DeepEqual(expAnon, actAnon)
+	actualJSON, err := json.Marshal(actual)
+	if err != nil {
+		t.Logf("Failed to marshal actual value: %v", err)
+		return false
+	}
+
+	var expectedMap, actualMap map[string]interface{}
+	if err := json.Unmarshal(expectedJSON, &expectedMap); err != nil {
+		t.Logf("Failed to unmarshal expected value: %v", err)
+		return false
+	}
+
+	if err := json.Unmarshal(actualJSON, &actualMap); err != nil {
+		t.Logf("Failed to unmarshal actual value: %v", err)
+		return false
+	}
+
+	de := reflect.DeepEqual(expectedMap, actualMap)
 	if !de {
 		dmp := diffmatchpatch.New()
-		expStr := fmt.Sprintf("%#v", expAnon)
-		actStr := fmt.Sprintf("%#v", actAnon)
+		expStr := fmt.Sprintf("%#v", expectedMap)
+		actStr := fmt.Sprintf("%#v", actualMap)
 		diffs := dmp.DiffMain(expStr, actStr, false)
 		t.Log("============= VALUE COMPARISON START =============")
 		t.Log("expected:", expStr)
@@ -324,6 +346,21 @@ func TestDecodeHCL(t *testing.T) {
 							},
 							Enabled: true,
 							Version: "1.3",
+						},
+						Auth: &TestAuthConfig{
+							Type: "oauth",
+							Provider: &TestAuthProvider{
+								Name:     "provider_name",
+								Settings: map[string]string{"key": "value"},
+							},
+						},
+						LimitWithKey: []*TestRateLimitWithLabelKey{
+							{
+								Key:               "default",
+								RequestsPerSecond: 100,
+								Burst:             10,
+								Ips:               []string{"192.168.1.1"},
+							},
 						},
 					},
 				}
