@@ -15,7 +15,7 @@ func TestJSONSchemaToReflectable(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected reflect.Value
+		expected func() reflect.Type
 		wantErr  bool
 	}{
 		{
@@ -29,13 +29,22 @@ func TestJSONSchemaToReflectable(t *testing.T) {
 					}
 				}
 			}`,
-			expected: reflect.ValueOf(reflect.StructOf([]reflect.StructField{
-				{
-					Name: "Name",
-					Tag:  reflect.StructTag(`json:"name" hcl:"name"`),
-					Type: reflect.TypeOf(""),
-				},
-			})),
+			expected: func() reflect.Type {
+				n := struct {
+					Name string `json:"name" hcl:"name"`
+				}{
+					Name: "test",
+				}
+				v := struct {
+					Root struct {
+						Name string `json:"name" hcl:"name"`
+					} `json:"Root" hcl:"Root"`
+				}{
+					Root: n,
+				}
+				return reflect.TypeOf(v)
+			},
+
 			wantErr: false,
 		},
 	}
@@ -48,7 +57,7 @@ func TestJSONSchemaToReflectable(t *testing.T) {
 				return
 			}
 			require.NoError(t, err, "unexpected error")
-			require.Equal(t, tt.expected, result, "schema conversion mismatch")
+			require.Equal(t, tt.expected().String(), result.String(), "schema conversion mismatch")
 		})
 	}
 }

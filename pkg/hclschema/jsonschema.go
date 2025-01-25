@@ -38,7 +38,7 @@ func DecodeHCL(ctx context.Context, hcls []byte, typ reflect.Type) (reflect.Valu
 // JSONSchemaToHCL converts a JSON schema into an HCL schema
 // 🔄 This function uses go-jsonschema to generate Go structs,
 // then converts them to HCL schema via reflection
-func JSONSchemaToReflectable(jsonSchema []byte) (reflect.Value, error) {
+func JSONSchemaToReflectable(jsonSchema []byte) (reflect.Type, error) {
 
 	uri := url.URL{
 		Scheme: "file",
@@ -46,16 +46,21 @@ func JSONSchemaToReflectable(jsonSchema []byte) (reflect.Value, error) {
 	}
 
 	// Generate Go code from JSON schema
-	schema, err := generate.Parse(string(jsonSchema), &uri)
+	schema, err := generate.ParseWithSchemaKeyRequired(string(jsonSchema), &uri, false)
 	if err != nil {
-		return reflect.Value{}, errors.Errorf("generating schema: %w", err)
+		return nil, errors.Errorf("generating schema: %w", err)
 	}
 
 	gen := generate.New(schema)
 
+	err = gen.CreateTypes()
+	if err != nil {
+		return nil, errors.Errorf("creating types: %w", err)
+	}
+
 	reflectable, err := gen.ToReflectableStruct()
 	if err != nil {
-		return reflect.Value{}, errors.Errorf("converting schema to reflectable: %w", err)
+		return nil, errors.Errorf("converting schema to reflectable: %w", err)
 	}
 
 	return reflectable, nil

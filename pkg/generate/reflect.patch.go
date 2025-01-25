@@ -6,7 +6,7 @@ import (
 )
 
 // https://stackoverflow.com/questions/64196547/is-possible-to-reflect-an-struct-from-ast
-func (g *Generator) ToReflectableStruct() (reflect.Value, error) {
+func (g *Generator) ToReflectableStruct() (reflect.Type, error) {
 	rootFields := []reflect.StructField{}
 	for name, field := range g.Structs {
 		thisStructFields := []reflect.StructField{}
@@ -14,7 +14,7 @@ func (g *Generator) ToReflectableStruct() (reflect.Value, error) {
 			thisStructFields = append(thisStructFields, reflect.StructField{
 				Name: field.Name,
 				Type: reflect.TypeOf(field.Type),
-				Tag:  reflect.StructTag(fmt.Sprintf(`json:"%s" hcl:"%s"`, field.Name, field.Name)),
+				Tag:  reflect.StructTag(fmt.Sprintf(`json:"%s" hcl:"%s"`, field.JSONName, field.JSONName)),
 			})
 		}
 		rootFields = append(rootFields, reflect.StructField{
@@ -24,5 +24,5 @@ func (g *Generator) ToReflectableStruct() (reflect.Value, error) {
 		})
 	}
 
-	return reflect.New(reflect.StructOf(rootFields)), nil
+	return reflect.StructOf(rootFields), nil
 }
