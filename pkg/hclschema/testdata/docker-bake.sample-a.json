@@ -1,0 +1,201 @@
+{
+	"group": {
+		"all-cloud-tools": {
+			"targets": ["cloud-tools-latest"]
+		},
+		"all-kdc": {
+			"targets": ["kdc-latest"]
+		},
+		"all-koji": {
+			"targets": ["koji-latest"]
+		},
+		"all-nfsd": {
+			"targets": ["nfsd-latest"]
+		},
+		"all-osbuild-ci": {
+			"targets": [
+				"osbuild-ci-latest",
+				"osbuild-ci-c9s-latest",
+				"osbuild-ci-c10s-latest"
+			]
+		},
+		"all-postgres": {
+			"targets": ["postgres-13-alpine"]
+		},
+		"all-rpmrepo-ci": {
+			"targets": ["rpmrepo-ci-latest"]
+		},
+		"all-rpmrepo-snapshot": {
+			"targets": ["rpmrepo-snapshot-latest"]
+		},
+		"default": {
+			"targets": [
+				"all-cloud-tools",
+				"all-kdc",
+				"all-koji",
+				"all-nfsd",
+				"all-osbuild-ci",
+				"all-postgres",
+				"all-rpmrepo-ci",
+				"all-rpmrepo-snapshot"
+			]
+		}
+	},
+	"target": {
+		"cloud-tools-latest": {
+			"context": ".",
+			"dockerfile": "src/images/cloud-tools.Dockerfile",
+			"args": {
+				"OSB_DNF_PACKAGES": "google-cloud-sdk,libxcrypt-compat,azure-cli,awscli,openssh-clients",
+				"OSB_FROM": "docker.io/library/fedora:latest"
+			},
+			"labels": {
+				"org.opencontainers.image.source": "https://github.com/osbuild/containers"
+			},
+			"tags": [
+				"ghcr.io/osbuild/cloud-tools:latest",
+				"quay.io/osbuild/cloud-tools:latest"
+			],
+			"platforms": ["linux/amd64", "linux/arm64"]
+		},
+		"kdc-latest": {
+			"context": ".",
+			"dockerfile": "src/images/kdc.Dockerfile",
+			"labels": {
+				"org.opencontainers.image.source": "https://github.com/osbuild/containers"
+			},
+			"tags": [
+				"ghcr.io/osbuild/kdc:latest",
+				"quay.io/osbuild/kdc:latest"
+			],
+			"platforms": ["linux/amd64", "linux/arm64"]
+		},
+		"koji-latest": {
+			"context": ".",
+			"dockerfile": "src/images/koji.Dockerfile",
+			"labels": {
+				"org.opencontainers.image.source": "https://github.com/osbuild/containers"
+			},
+			"tags": [
+				"ghcr.io/osbuild/koji:latest",
+				"quay.io/osbuild/koji:latest"
+			],
+			"platforms": ["linux/amd64", "linux/arm64"]
+		},
+		"nfsd-latest": {
+			"context": ".",
+			"dockerfile": "src/images/nfsd.Dockerfile",
+			"args": {
+				"OSB_FROM": "docker.io/almalinux/9-init:latest"
+			},
+			"labels": {
+				"org.opencontainers.image.source": "https://github.com/osbuild/containers"
+			},
+			"tags": [
+				"ghcr.io/osbuild/nfsd:latest",
+				"quay.io/osbuild/nfsd:latest"
+			],
+			"platforms": ["linux/amd64"]
+		},
+		"osbuild-ci-c10s-latest": {
+			"context": ".",
+			"dockerfile": "src/images/osbuild-ci.Dockerfile",
+			"args": {
+				"OSB_DNF_ALLOW_ERASING": "1",
+				"OSB_DNF_GROUPS": "development tools,rpm-development-tools",
+				"OSB_DNF_NOBEST": "1",
+				"OSB_DNF_PACKAGES": "bash,bubblewrap,coreutils,cryptsetup,curl,dnf,dnf-plugins-core,dosfstools,e2fsprogs,findutils,git,glibc,grub2-pc-modules,grub2-tools,iproute,lvm2,make,openscap-utils,ostree,parted,podman,policycoreutils,python-rpm-macros,python3-devel,python3-dnf,python3-iniparse,python3-jsonschema,python3-librepo,python3-mako,python3-pip,python3-pyyaml,python3-rpm-generators,python3-rpm-macros,qemu-img,rpm,rpm-build,rpm-ostree,rpmdevtools,skopeo,systemd,systemd-boot-unsigned,systemd-container,tar,util-linux,veritysetup,xfsprogs,xorriso",
+				"OSB_FROM": "quay.io/centos/centos:stream10-development",
+				"OSB_PIP_PACKAGES": "autopep8,boto3,botocore,docutils,isort,mypy,pylint,pytest,pytest-cov,tox"
+			},
+			"labels": {
+				"org.opencontainers.image.source": "https://github.com/osbuild/containers"
+			},
+			"tags": [
+				"ghcr.io/osbuild/osbuild-ci-c10s:latest",
+				"quay.io/osbuild/osbuild-ci-c10s:latest"
+			],
+			"platforms": ["linux/amd64"]
+		},
+		"osbuild-ci-c9s-latest": {
+			"context": ".",
+			"dockerfile": "src/images/osbuild-ci.Dockerfile",
+			"args": {
+				"OSB_DNF_ALLOW_ERASING": "1",
+				"OSB_DNF_GROUPS": "development tools,rpm-development-tools",
+				"OSB_DNF_PACKAGES": "bash,bubblewrap,coreutils,cryptsetup,curl,dnf,dnf-plugins-core,dosfstools,e2fsprogs,findutils,git,glibc,grub2-pc-modules,grub2-tools,iproute,lvm2,make,openscap-utils,ostree,parted,podman,policycoreutils,python-rpm-macros,python3-devel,python3-dnf,python3-iniparse,python3-jsonschema,python3-librepo,python3-mako,python3-pip,python3-pyyaml,python3-rpm-generators,python3-rpm-macros,qemu-img,rpm,rpm-build,rpm-ostree,rpmdevtools,skopeo,systemd,systemd-boot-unsigned,systemd-container,tar,util-linux,veritysetup,xfsprogs,xorriso,python3-tomli",
+				"OSB_FROM": "quay.io/centos/centos:stream9",
+				"OSB_PIP_PACKAGES": "autopep8,boto3,botocore,docutils,isort,mypy,pylint,pytest,pytest-cov,tox"
+			},
+			"labels": {
+				"org.opencontainers.image.source": "https://github.com/osbuild/containers"
+			},
+			"tags": [
+				"ghcr.io/osbuild/osbuild-ci-c9s:latest",
+				"quay.io/osbuild/osbuild-ci-c9s:latest"
+			],
+			"platforms": ["linux/amd64"]
+		},
+		"osbuild-ci-latest": {
+			"context": ".",
+			"dockerfile": "src/images/osbuild-ci.Dockerfile",
+			"args": {
+				"OSB_DNF_GROUPS": "development-tools,rpm-development-tools",
+				"OSB_DNF_PACKAGES": "bash,btrfs-progs,bubblewrap,coreutils,cryptsetup,curl,dnf,dnf-plugins-core,dosfstools,e2fsprogs,erofs-utils,findutils,git,glibc,grub2-pc-modules,grub2-tools,iproute,lvm2,make,nbd,openscap-utils,ostree,pacman,parted,podman,policycoreutils,pylint,python-rpm-macros,python3.6,python3.8,python3.9,python3.10,python3.12,python3.13,python3-autopep8,python3-boto3,python3-botocore,python3-docutils,python3-devel,python3-dnf,python3-iniparse,python3-isort,python3-jsonschema,python3-librepo,python3-libdnf5,python3-mako,python3-mypy,python3-pip,python3-pylint,python3-pytest,python3-pytest-cov,python3-pyyaml,python3-rpm-generators,python3-rpm-macros,qemu-img,qemu-system-x86,rpm,rpm-build,rpm-ostree,rpmdevtools,skopeo,systemd,systemd-boot-unsigned,systemd-container,tar,tox,util-linux,veritysetup,xfsprogs,xorriso,",
+				"OSB_FROM": "registry.fedoraproject.org/fedora:latest"
+			},
+			"labels": {
+				"org.opencontainers.image.source": "https://github.com/osbuild/containers"
+			},
+			"tags": [
+				"ghcr.io/osbuild/osbuild-ci:latest",
+				"quay.io/osbuild/osbuild-ci:latest"
+			],
+			"platforms": ["linux/amd64"]
+		},
+		"postgres-13-alpine": {
+			"context": ".",
+			"dockerfile": "src/images/postgres.Dockerfile",
+			"labels": {
+				"org.opencontainers.image.source": "https://github.com/osbuild/containers"
+			},
+			"tags": [
+				"ghcr.io/osbuild/postgres:13-alpine",
+				"quay.io/osbuild/postgres:13-alpine"
+			],
+			"platforms": ["linux/amd64", "linux/arm64"]
+		},
+		"rpmrepo-ci-latest": {
+			"context": ".",
+			"dockerfile": "src/images/rpmrepo-ci.Dockerfile",
+			"args": {
+				"OSB_DNF_PACKAGES": "python3-boto3,python3-botocore,python3-pylint,python3-pytest,python3-requests",
+				"OSB_FROM": "docker.io/library/fedora:latest"
+			},
+			"labels": {
+				"org.opencontainers.image.source": "https://github.com/osbuild/containers"
+			},
+			"tags": [
+				"ghcr.io/osbuild/rpmrepo-ci:latest",
+				"quay.io/osbuild/rpmrepo-ci:latest"
+			],
+			"platforms": ["linux/amd64"]
+		},
+		"rpmrepo-snapshot-latest": {
+			"context": ".",
+			"dockerfile": "src/images/rpmrepo-snapshot.Dockerfile",
+			"args": {
+				"OSB_DNF_PACKAGES": "curl,dnf-command(reposync),git,jq,python3-boto3,python3-devel",
+				"OSB_FROM": "docker.io/library/fedora:40"
+			},
+			"labels": {
+				"org.opencontainers.image.source": "https://github.com/osbuild/containers"
+			},
+			"tags": [
+				"ghcr.io/osbuild/rpmrepo-snapshot:latest",
+				"quay.io/osbuild/rpmrepo-snapshot:latest"
+			],
+			"platforms": ["linux/amd64"]
+		}
+	}
+}

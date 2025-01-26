@@ -2,7 +2,6 @@ package hclschema
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"reflect"
 
@@ -24,8 +23,6 @@ func DecodeHCL(ctx context.Context, hcls []byte, typ reflect.Type) (reflect.Valu
 	ectx := &hcl.EvalContext{}
 
 	val := reflect.New(typ)
-
-	fmt.Println("val", typ.String())
 
 	diags = gohcl.DecodeBodyToStruct(file.Body, ectx, val.Elem(), typ)
 	if diags.HasErrors() {
