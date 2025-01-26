@@ -3,16 +3,14 @@ package hclschema_test
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
+	"github.com/walteh/hclpls/pkg/diff"
 	myhclschema "github.com/walteh/hclpls/pkg/hclschema"
 )
 
@@ -197,47 +195,6 @@ func toAnonymousFieldType(t reflect.Type) reflect.Type {
 	}
 }
 
-// Helper function to compare values for testing
-func compareValues(t *testing.T, expected, actual interface{}) bool {
-	// Convert both to JSON and back to normalize the structures
-	expectedJSON, err := json.Marshal(expected)
-	if err != nil {
-		t.Logf("Failed to marshal expected value: %v", err)
-		return false
-	}
-
-	actualJSON, err := json.Marshal(actual)
-	if err != nil {
-		t.Logf("Failed to marshal actual value: %v", err)
-		return false
-	}
-
-	var expectedMap, actualMap map[string]interface{}
-	if err := json.Unmarshal(expectedJSON, &expectedMap); err != nil {
-		t.Logf("Failed to unmarshal expected value: %v", err)
-		return false
-	}
-
-	if err := json.Unmarshal(actualJSON, &actualMap); err != nil {
-		t.Logf("Failed to unmarshal actual value: %v", err)
-		return false
-	}
-
-	de := reflect.DeepEqual(expectedMap, actualMap)
-	if !de {
-		dmp := diffmatchpatch.New()
-		expStr := fmt.Sprintf("%#v", expectedMap)
-		actStr := fmt.Sprintf("%#v", actualMap)
-		diffs := dmp.DiffMain(expStr, actStr, false)
-		t.Log("============= VALUE COMPARISON START =============")
-		t.Log("expected:", expStr)
-		t.Log("actual:", actStr)
-		t.Log("diff:", dmp.DiffPrettyText(diffs))
-		t.Log("============= VALUE COMPARISON END =============")
-	}
-	return de
-}
-
 func TestJSONSchemaToReflectable(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -284,17 +241,7 @@ func TestJSONSchemaToReflectable(t *testing.T) {
 				return
 			}
 			require.NoError(t, err, "unexpected error")
-			de := reflect.DeepEqual(tt.expected(), result)
-			assert.True(t, de, "schema conversion mismatch")
-			if !de {
-				dmp := diffmatchpatch.New()
-				diffs := dmp.DiffMain(tt.expected().String(), result.String(), false)
-				t.Log("============= TYPE COMPARISON START =============")
-				t.Log("expected:", tt.expected().String())
-				t.Log("actual:", result.String())
-				t.Log("diff:", dmp.DiffPrettyText(diffs))
-				t.Log("============= TYPE COMPARISON END =============")
-			}
+			AssertUnknownTypeEqual(t, tt.expected(), result)
 		})
 	}
 }
@@ -413,16 +360,50 @@ func TestDecodeHCL(t *testing.T) {
 				require.Error(t, err, "expected error but got none")
 				return
 			}
-			assert.NoError(t, err, "unexpected error")
-			if diags, ok := err.(hcl.Diagnostics); ok && len(diags) > 0 {
-				t.Log("============= DIAGNOSTICS START =============")
-				for _, diag := range diags {
-					t.Log("diag", diag.Error())
-				}
-				t.Log("============= DIAGNOSTICS END ===============")
-			}
-			assert.True(t, compareValues(t, tt.expected(), val.Interface()), "value mismatch")
+			AssertNoDiagnostics(t, err)
+			AssertUnknownValueEqualAsJSON(t, reflect.ValueOf(tt.expected()), val)
 		})
+	}
+}
+
+func AssertNoDiagnostics(t *testing.T, err error) {
+	if diags, ok := err.(hcl.Diagnostics); ok && diags.HasErrors() {
+		str := "\n\n============= DIAGNOSTICS START =============\n\n"
+		for i, diag := range diags {
+			str += fmt.Sprintf("[%d] %s\n\n\t%s\n\n", i, diag.Subject.String(), diag.Subject)
+		}
+		str += "\n\n============= DIAGNOSTICS END ===============\n\n"
+		t.Log("diagnostics report:\n" + str)
+		assert.Fail(t, "expected no diagnostics")
+	}
+}
+
+// Helper function to compare values for testing
+func AssertUnknownValueEqualAsJSON(t *testing.T, expected, actual reflect.Value) {
+	t.Helper()
+	td := diff.TypedDiff(expected, actual)
+	de := td == ""
+	if !de {
+		str := fmt.Sprintf("\n\n============= VALUE COMPARISON START =============\n\n")
+		str += fmt.Sprintf("test: %s\n", t.Name())
+		str += td + "\n\n"
+		str += "============= VALUE COMPARISON END ===============\n\n"
+		t.Log("value comparison report:\n" + str)
+	}
+
+	assert.True(t, de, "value mismatch")
+}
+
+func AssertUnknownTypeEqual(t *testing.T, expected, actual reflect.Type) {
+	t.Helper()
+	de := reflect.DeepEqual(expected, actual)
+	if !de {
+		str := fmt.Sprintf("\n\n============= TYPE COMPARISON START =============\n\n")
+		str += fmt.Sprintf("test: %s\n", t.Name())
+		str += diff.TypedDiff(expected, actual) + "\n\n"
+		str += "============= TYPE COMPARISON END ===============\n\n"
+		t.Log("type comparison report:\n" + str)
+		assert.Fail(t, "type mismatch")
 	}
 }
 
