@@ -220,12 +220,13 @@ func AssertUnknownValueEqualAsJSON(t *testing.T, expected, actual reflect.Value)
 
 func AssertUnknownTypeEqual(t *testing.T, expected, actual reflect.Type) {
 	t.Helper()
-	de := reflect.DeepEqual(expected, actual)
+	td := diff.TypedDiff(expected, actual)
+	de := td == ""
 	if !de {
 		color.NoColor = false
 		str := color.New(color.FgHiYellow, color.Faint).Sprintf("\n\n============= TYPE COMPARISON START =============\n\n")
 		str += fmt.Sprintf("%s\n", color.YellowString("%s", t.Name()))
-		str += diff.TypedDiff(expected, actual) + "\n\n"
+		str += td + "\n\n"
 		str += color.New(color.FgHiYellow, color.Faint).Sprintf("============= TYPE COMPARISON END ===============\n\n")
 		t.Log("type comparison report:\n" + str)
 		require.Fail(t, "type mismatch")

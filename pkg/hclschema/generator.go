@@ -74,17 +74,18 @@ func RecursiveReflectableType(g *generate.Generator, name string, additionalFlag
 					return nil, flags, fmt.Errorf("failed to get type for %s: %w", name, err)
 				}
 				if _, ok := g.Structs[name[2:]]; ok {
-					afterTypeKeyForBlock, _, err := RecursiveReflectableType(g, name[2:], []reflect.StructField{
-						{
-							Name: mapKeyName,
-							Type: okay,
-							Tag:  reflect.StructTag(fmt.Sprintf(`json:"%s" hcl:"%s"`, mapKeyName, mapKeyName)), // no label for array
-						},
-					}...)
-					if err != nil {
-						return nil, flags, fmt.Errorf("failed to get type for %s: %w", name, err)
-					}
-					flags.KeyBlockType = afterTypeKeyForBlock
+					// afterTypeKeyForBlock, _, err := RecursiveReflectableType(g, name[2:], []reflect.StructField{
+					// 	{
+					// 		Name: mapKeyName,
+					// 		Type: okay,
+					// 		Tag:  reflect.StructTag(fmt.Sprintf(`json:"%s" hcl:"%s"`, mapKeyName, mapKeyName)), // no label for array
+					// 	},
+					// }...)
+					// if err != nil {
+					// 	return nil, flags, fmt.Errorf("failed to get type for %s: %w", name, err)
+					// }
+					flags.Block = true
+					// return reflect.SliceOf(afterTypeKeyForBlock), flags, nil
 				}
 
 				return reflect.SliceOf(okay), flags, nil
@@ -103,18 +104,24 @@ func RecursiveReflectableType(g *generate.Generator, name string, additionalFlag
 				if err != nil {
 					return nil, flags, fmt.Errorf("failed to get type for %s: %w", name, err)
 				}
+
+				if afterType.Kind() == reflect.Pointer {
+					after = after[1:]
+				}
+
 				if _, ok := g.Structs[after]; ok && beforeType.Kind() == reflect.String {
-					afterTypeKeyForBlock, _, err := RecursiveReflectableType(g, after, []reflect.StructField{
-						{
-							Name: mapKeyName,
-							Type: beforeType,
-							Tag:  reflect.StructTag(fmt.Sprintf(`json:"%s" hcl:"%s,label"`, mapKeyName, mapKeyName)), // label for map
-						},
-					}...)
-					if err != nil {
-						return nil, flags, fmt.Errorf("failed to get type for %s: %w", name, err)
-					}
-					flags.KeyBlockType = afterTypeKeyForBlock
+					// afterTypeKeyForBlock, _, err := RecursiveReflectableType(g, after, []reflect.StructField{
+					// 	{
+					// 		Name: mapKeyName,
+					// 		Type: beforeType,
+					// 		Tag:  reflect.StructTag(fmt.Sprintf(`json:"%s" hcl:"%s,label"`, mapKeyName, mapKeyName)), // label for map
+					// 	},
+					// }...)
+					// if err != nil {
+					// 	return nil, flags, fmt.Errorf("failed to get type for %s: %w", name, err)
+					// }
+					flags.Block = true
+					// flags.KeyBlockType = afterTypeKeyForBlock
 				}
 				return reflect.MapOf(beforeType, afterType), flags, nil
 			}
@@ -176,11 +183,11 @@ func ToReflectableStruct(g *generate.Generator) (reflect.Type, error) {
 			tag := reflect.StructTag(fmt.Sprintf(`json:"%s" hcl:"%s"`, field.JSONName, tagString))
 			rootFields = append(rootFields, reflect.StructField{Name: field.Name, Type: rrt, Tag: tag})
 
-			if sf.KeyBlockType != nil {
-				tag2 := reflect.StructTag(fmt.Sprintf(`json:"%s" hcl:"%s"`, field.JSONName, sf.hclTagForField(field)))
-				rrt = reflect.SliceOf(sf.KeyBlockType)
-				rootFields = append(rootFields, reflect.StructField{Name: field.JSONName, Type: rrt, Tag: tag2})
-			}
+			// if sf.KeyBlockType != nil {
+			// 	tag2 := reflect.StructTag(fmt.Sprintf(`json:"%s" hcl:"%s"`, field.JSONName, sf.hclTagForField(field)))
+			// 	rrt = reflect.SliceOf(sf.KeyBlockType)
+			// 	rootFields = append(rootFields, reflect.StructField{Name: field.JSONName, Type: rrt, Tag: tag2})
+			// }
 
 		}
 	}

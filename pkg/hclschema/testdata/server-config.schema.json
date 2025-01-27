@@ -77,15 +77,12 @@
 						}
 					}
 				},
-				"limit": {
-					"type": "array",
-					"items": {
+				"limits": {
+					"type": "object",
+					"additionalProperties": {
 						"type": "object",
-						"required": ["key", "requests_per_second"],
+						"required": ["requests_per_second"],
 						"properties": {
-							"key": {
-								"type": "string"
-							},
 							"requests_per_second": {
 								"type": "integer",
 								"minimum": 0

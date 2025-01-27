@@ -248,43 +248,18 @@ func DecodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value, 
 			if sli.IsNil() {
 				sli = reflect.MakeMap(reflect.MapOf(reflect.TypeOf(""), elemType))
 			}
-// "reflect.Value.SetMapIndex: value of type struct { RequestsPerSecond int \"json:\\\"requests_per_second\\\" hcl:\\\"requests_per_second\\\"\"; Burst int \"json:\\\"burst\\\" hcl:\\\"burst,optional\\\"\"; Ips []string \"json:\\\"ips\\\" hcl:\\\"ips,optional\\\"\" } is not assignable to type *struct { RequestsPerSecond int \"json:\\\"requests_per_second\\\" hcl:\\\"requests_per_second\\\"\"; Burst int \"json:\\\"burst\\\" hcl:\\\"burst,optional\\\"\"; Ips []string \"json:\\\"ips\\\" hcl:\\\"ips,optional\\\"\" }"
+
 			for _, block := range blocks {
 				keyname := block.Labels[0]
+				v := reflect.New(ty)
 				if isPtr {
-					// if i >= sli.Len() {
-					// 	sli = reflect.Append(sli, reflect.New(ty))
-					// }
-					// v := sli.MapIndex(reflect.ValueOf(keyname))
-					// // v := sli.Index(i)
-					// if v.IsNil() {
-					// }
-					v := reflect.New(ty)
-					fmt.Println("decodeBodyToValue", v.Type().String())
-
 					diags = append(diags, decodeBodyToValue(block.Body, ctx, v.Elem())...)
-					fmt.Println("decodeBodyToValue a", v.Elem().Type().String())
-					fmt.Println("decodeBodyToValue b", sli.Type().String())
-					fmt.Println("decodeBodyToValue c", v.Type().String())
-					sli.SetMapIndex(reflect.ValueOf(keyname), v)
 				} else {
-					// if i >= sli.Len() {
-					// 	sli.MapIndex(reflect.ValueOf(keyname)).Set(v)
-
-					// 	sli = reflect.Append(sli, reflect.Indirect(reflect.New(ty)))
-					// }
-					v := sli.MapIndex(reflect.ValueOf(keyname))
-					if !v.IsValid() {
-						v = reflect.New(ty)
-					}
 					diags = append(diags, decodeBodyToValue(block.Body, ctx, v)...)
-					sli.MapIndex(reflect.ValueOf(keyname)).Set(v)
 				}
+				sli.SetMapIndex(reflect.ValueOf(keyname), v)
 			}
 
-			if sli.Len() > len(blocks) {
-				sli.SetLen(len(blocks))
-			}
 
 			val.Field(fieldIdx).Set(sli)
 		default:
