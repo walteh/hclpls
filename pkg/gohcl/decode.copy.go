@@ -208,7 +208,7 @@ func DecodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value, 
 		case isSlice:
 			elemType := ty
 			if isPtr {
-				elemType = reflect.PtrTo(ty)
+				elemType = reflect.PointerTo(ty)
 			}
 			sli := val.Field(fieldIdx)
 			if sli.IsNil() {
@@ -284,7 +284,6 @@ func DecodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value, 
 
 func decodeBodyToMap(body hcl.Body, ctx *hcl.EvalContext, v reflect.Value) hcl.Diagnostics {
 
-	fmt.Println("decodeBodyToMap", v.Type().String())
 	attrs, diags := body.JustAttributes()
 	if attrs == nil {
 		return diags
@@ -301,7 +300,7 @@ func decodeBodyToMap(body hcl.Body, ctx *hcl.EvalContext, v reflect.Value) hcl.D
 		default:
 			ev := reflect.New(v.Type().Elem())
 			// this just triggers an error, no logical reason for it
-			// diags = append(diags, DecodeExpression(attr.Expr, ctx, ev.Interface())...)
+			diags = append(diags, DecodeExpression(attr.Expr, ctx, ev.Interface())...)
 			mv.SetMapIndex(reflect.ValueOf(k), ev.Elem())
 		}
 	}
@@ -359,12 +358,6 @@ func decodeBlockToValue(block *hcl.Block, ctx *hcl.EvalContext, v reflect.Value)
 		lfieldIdx := blockTags.Labels[li].FieldIndex
 		lfieldName := blockTags.Labels[li].Name
 
-		
-		// if lfieldName == "___key" {
-		// 	v.SetMapIndex(reflect.ValueOf(lv), reflect.ValueOf(v))
-		// 	continue
-		// }
-
 		v.Field(lfieldIdx).Set(reflect.ValueOf(lv))
 
 		if ix, exists := blockTags.LabelRange[lfieldName]; exists {
@@ -402,8 +395,11 @@ func DecodeExpression(expr hcl.Expression, ctx *hcl.EvalContext, val interface{}
 
 	convTy, err := gocty.ImpliedType(val)
 	if err != nil {
-		panic(fmt.Sprintf("unsuitable DecodeExpression target: %s", err))
+		return diags
+		// panic(fmt.Sprintf("unsuitable DecodeExpression target: %s", err))
 	}
+
+	// cty.UnknownVal(convTy)
 
 	srcVal, err = convert.Convert(srcVal, convTy)
 	if err != nil {

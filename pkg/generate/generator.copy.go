@@ -65,7 +65,7 @@ func (g *Generator) CreateTypes() (err error) {
 // process a block of definitions
 func (g *Generator) processDefinitions(schema *Schema) error {
 	for key, subSchema := range schema.Definitions {
-		if _, err := g.processSchema(getGolangName(key), subSchema); err != nil {
+		if _, err := g.processSchema(getGolangName(key)+"_Definition", subSchema); err != nil {
 			return err
 		}
 	}
@@ -261,6 +261,9 @@ func (g *Generator) processObject(name string, schema *Schema) (typ string, err 
 			strct.GenerateCode = true
 			strct.AdditionalType = "false"
 		}
+	}
+	if _, ok := g.Structs[strct.Name]; ok {
+		return "error_creating_object", errors.New("duplicate object name: " + strct.Name)
 	}
 	g.Structs[strct.Name] = strct
 	// objects are always a pointer

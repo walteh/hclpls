@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/walteh/yaml"
 )
 
 func ConvolutedFormatReflectValue(s reflect.Value) any {
@@ -26,10 +28,27 @@ func ConvolutedFormatReflectValue(s reflect.Value) any {
 		panic(err)
 	}
 
-	// var expectedMap interface{}
-	// if err := json.Unmarshal(buf.Bytes(), &expectedMap); err != nil {
-	// 	panic(err)
-	// }
+	mapd := yaml.NewOrderedMap()
+
+	if err := json.Unmarshal(buf.Bytes(), mapd); err != nil {
+		panic(err)
+	}
+	ms := mapd.ToMapSlice()
+	keys := []string{}
+	for _, key := range ms {
+		keys = append(keys, key.Key.(string))
+	}
+	sort.Strings(keys)
+
+	ms.SortKeys(keys...)
+
+	buf.Reset()
+
+	enc2 := json.NewEncoder(buf)
+	enc2.SetIndent("", "\t")
+	if err := enc2.Encode(ms); err != nil {
+		panic(err)
+	}
 
 	return buf.String()
 }
