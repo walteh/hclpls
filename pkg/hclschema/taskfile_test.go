@@ -1,5 +1,9 @@
 package hclschema_test
 
+import (
+	_ "embed"
+)
+
 //go:embed testdata/taskfile.schema.json
 var taskfileSchema []byte
 

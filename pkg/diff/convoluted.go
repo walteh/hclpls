@@ -14,19 +14,24 @@ import (
 
 func ConvolutedFormatReflectValue(s reflect.Value) any {
 
+	if !s.IsValid() {
+		return s.String()
+	}
+
 	buf := bytes.NewBuffer(nil)
 	enc := json.NewEncoder(buf)
+	enc.SetIndent("", "\t")
 
 	if err := enc.Encode(s.Interface()); err != nil {
 		panic(err)
 	}
 
-	var expectedMap interface{}
-	if err := json.Unmarshal(buf.Bytes(), &expectedMap); err != nil {
-		panic(err)
-	}
+	// var expectedMap interface{}
+	// if err := json.Unmarshal(buf.Bytes(), &expectedMap); err != nil {
+	// 	panic(err)
+	// }
 
-	return expectedMap
+	return buf.String()
 }
 
 // FormatStructString takes a string containing a Go struct definition and formats it for better readability

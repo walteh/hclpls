@@ -176,10 +176,10 @@ func ToReflectableStruct(g *generate.Generator) (reflect.Type, error) {
 			tag := reflect.StructTag(fmt.Sprintf(`json:"%s" hcl:"%s"`, field.JSONName, tagString))
 			rootFields = append(rootFields, reflect.StructField{Name: field.Name, Type: rrt, Tag: tag})
 
-			if sf.KeyBlockType != nil && strings.HasSuffix(field.JSONName, "s") {
+			if sf.KeyBlockType != nil {
 				tag2 := reflect.StructTag(fmt.Sprintf(`json:"%s" hcl:"%s"`, field.JSONName, sf.hclTagForField(field)))
 				rrt = reflect.SliceOf(sf.KeyBlockType)
-				rootFields = append(rootFields, reflect.StructField{Name: strings.TrimSuffix(field.JSONName, "s"), Type: rrt, Tag: tag2})
+				rootFields = append(rootFields, reflect.StructField{Name: field.JSONName, Type: rrt, Tag: tag2})
 			}
 
 		}

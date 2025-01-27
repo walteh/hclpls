@@ -1,5 +1,9 @@
 package hclschema_test
 
+import (
+	_ "embed"
+)
+
 //go:embed testdata/server-config.schema.json
 var serverConfigSchema []byte
 
@@ -12,10 +16,10 @@ type TestServerConfig struct {
 }
 
 type TestSecurity struct {
-	Tls          *TestTLSConfig               `json:"tls" hcl:"tls,block"`
-	Auth         *TestAuthConfig              `json:"auth" hcl:"auth,optional,block"`
-	Limits       map[string]*TestRateLimit    `json:"limits" hcl:"limits,optional"`
-	LimitWithKey []*TestRateLimitWithLabelKey `json:"limit_with_key" hcl:"limit,block"` // TODO - we just need to knock this out in the parser and we are golden
+	Tls    *TestTLSConfig            `json:"tls" hcl:"tls,block"`
+	Auth   *TestAuthConfig           `json:"auth" hcl:"auth,optional,block"`
+	Limits map[string]*TestRateLimit `json:"limits" hcl:"limits,optional,block"`
+	// LimitWithKey []*TestRateLimitWithLabelKey `json:"limit_with_key" hcl:"limit,block"` // TODO - we just need to knock this out in the parser and we are golden
 }
 
 type TestTLSConfig struct {

@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/fatih/color"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/walteh/hclpls/pkg/diff"
 	myhclschema "github.com/walteh/hclpls/pkg/hclschema"
@@ -120,9 +120,9 @@ func TestDecodeHCL(t *testing.T) {
 								Settings: map[string]string{"key": "value"},
 							},
 						},
-						LimitWithKey: []*TestRateLimitWithLabelKey{
-							{
-								Key:               "default",
+						Limits: map[string]*TestRateLimit{
+
+							"default": {
 								RequestsPerSecond: 100,
 								Burst:             10,
 								Ips:               []string{"192.168.1.1"},
@@ -158,7 +158,7 @@ func TestDecodeHCL(t *testing.T) {
 						}
 					}
 					
-					limit "default" {
+					limits "default" {
 						requests_per_second = 100
 						burst = 10
 						ips = ["192.168.1.1"]
@@ -186,42 +186,62 @@ func TestDecodeHCL(t *testing.T) {
 }
 
 func AssertNoDiagnostics(t *testing.T, err error) {
+	t.Helper()
 	if diags, ok := err.(hcl.Diagnostics); ok && diags.HasErrors() {
-		str := "\n\n============= DIAGNOSTICS START =============\n\n"
-		for i, diag := range diags {
-			str += fmt.Sprintf("[%d] %s\n\n\t%s\n\n", i, diag.Subject.String(), diag.Subject)
+		color.NoColor = false
+		str := color.New(color.FgHiYellow, color.Faint).Sprintf("\n\n============= DIAGNOSTICS START =============\n\n")
+		str += fmt.Sprintf("%s\n\n", color.YellowString("%s", t.Name()))
+		for i, d := range diags {
+			str += fmt.Sprintf("[%d] %s\n\n\t%s\n\n", i, d.Subject.String(), fmt.Sprintf("%s; %s", d.Summary, d.Detail))
 		}
-		str += "\n\n============= DIAGNOSTICS END ===============\n\n"
+		str += color.New(color.FgHiYellow, color.Faint).Sprintf("\n\n============= DIAGNOSTICS END ===============\n\n")
 		t.Log("diagnostics report:\n" + str)
-		assert.Fail(t, "expected no diagnostics")
+		require.Fail(t, "expected no diagnostics")
 	}
 }
 
 // Helper function to compare values for testing
 func AssertUnknownValueEqualAsJSON(t *testing.T, expected, actual reflect.Value) {
 	t.Helper()
+
 	td := diff.TypedDiff(expected, actual)
 	de := td == ""
 	if !de {
-		str := fmt.Sprintf("\n\n============= VALUE COMPARISON START =============\n\n")
-		str += fmt.Sprintf("test: %s\n", t.Name())
+		color.NoColor = false
+		str := color.New(color.FgHiYellow, color.Faint).Sprintf("\n\n============= VALUE COMPARISON START =============\n\n")
+		str += fmt.Sprintf("%s\n", color.YellowString("%s", t.Name()))
 		str += td + "\n\n"
-		str += "============= VALUE COMPARISON END ===============\n\n"
+		str += color.New(color.FgHiYellow, color.Faint).Sprintf("============= VALUE COMPARISON END ===============\n\n")
 		t.Log("value comparison report:\n" + str)
 	}
 
-	assert.True(t, de, "value mismatch")
+	require.True(t, de, "value mismatch")
 }
 
 func AssertUnknownTypeEqual(t *testing.T, expected, actual reflect.Type) {
 	t.Helper()
 	de := reflect.DeepEqual(expected, actual)
 	if !de {
-		str := fmt.Sprintf("\n\n============= TYPE COMPARISON START =============\n\n")
-		str += fmt.Sprintf("test: %s\n", t.Name())
+		color.NoColor = false
+		str := color.New(color.FgHiYellow, color.Faint).Sprintf("\n\n============= TYPE COMPARISON START =============\n\n")
+		str += fmt.Sprintf("%s\n", color.YellowString("%s", t.Name()))
 		str += diff.TypedDiff(expected, actual) + "\n\n"
-		str += "============= TYPE COMPARISON END ===============\n\n"
+		str += color.New(color.FgHiYellow, color.Faint).Sprintf("============= TYPE COMPARISON END ===============\n\n")
 		t.Log("type comparison report:\n" + str)
-		assert.Fail(t, "type mismatch")
+		require.Fail(t, "type mismatch")
 	}
+}
+
+func AssertKnownValueEqual[T any](t *testing.T, expected, actual T) {
+	t.Helper()
+	de := reflect.DeepEqual(expected, actual)
+	if !de {
+		color.NoColor = false
+		str := color.New(color.FgHiYellow, color.Faint).Sprintf("\n\n=============  TYPED VALUE COMPARISON START =============\n\n")
+		str += fmt.Sprintf("%s\n", color.YellowString("%s", t.Name()))
+		str += diff.TypedDiff(expected, actual) + "\n\n"
+		str += color.New(color.FgHiYellow, color.Faint).Sprintf("=============  TYPED VALUE COMPARISON END ===============\n\n")
+		t.Log("value comparison report:\n" + str)
+	}
+	require.True(t, de, "value mismatch")
 }

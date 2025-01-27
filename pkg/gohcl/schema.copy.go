@@ -88,10 +88,19 @@ func ImpliedBodySchema(tty reflect.Type) (schema *hcl.BodySchema, partial bool) 
 		if fty.Kind() == reflect.Ptr {
 			fty = fty.Elem()
 		}
+		mapLabel := false
 		if fty.Kind() != reflect.Struct {
-			panic(fmt.Sprintf(
-				"hcl 'block' tag kind cannot be applied to %s field %s: struct required", field.Type.String(), field.Name,
-			))
+			if fty.Kind() == reflect.Map {
+				fty = fty.Elem()
+				if fty.Kind() == reflect.Ptr {
+					fty = fty.Elem()
+				}
+				mapLabel = true
+			} else {
+				panic(fmt.Sprintf(
+					"hcl 'block' tag kind cannot be applied to %s field %s: struct required", field.Type.String(), field.Name,
+				))
+			}
 		}
 		ftags := getFieldTags(fty)
 		var labelNames []string
@@ -100,6 +109,9 @@ func ImpliedBodySchema(tty reflect.Type) (schema *hcl.BodySchema, partial bool) 
 			for i, l := range ftags.Labels {
 				labelNames[i] = l.Name
 			}
+		}
+		if mapLabel {
+			labelNames = append(labelNames, "___key")
 		}
 
 		blockSchemas = append(blockSchemas, hcl.BlockHeaderSchema{
@@ -139,6 +151,15 @@ type labelField struct {
 	Name       string
 }
 
+func mapLabelKey(ty reflect.Value) reflect.Value {
+	ft := getFieldTags(ty.Type())
+	if ft.Labels[0].Name == "___key" {
+		fmt.Print(ty.String())
+		return ty.Field(ft.Labels[0].FieldIndex)
+	}
+	return reflect.Value{}
+}
+
 func getFieldTags(ty reflect.Type) *fieldTags {
 	ret := &fieldTags{
 		Attributes:          map[string]int{},
@@ -148,6 +169,17 @@ func getFieldTags(ty reflect.Type) *fieldTags {
 		AttributeNameRange:  map[string]int{},
 		AttributeValueRange: map[string]int{},
 		LabelRange:          map[string]int{},
+	}
+
+	if ty.Kind() == reflect.Map {
+		ty = ty.Elem()
+		if ty.Kind() == reflect.Ptr {
+			ty = ty.Elem()
+		}
+		ret.Labels = append(ret.Labels, labelField{
+			FieldIndex: ty.NumField(),
+			Name:       "___key",
+		})
 	}
 
 	ct := ty.NumField()

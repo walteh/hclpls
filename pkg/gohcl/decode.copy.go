@@ -134,7 +134,7 @@ func DecodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value, 
 		if attrValueRange, exists := tags.AttributeValueRange[name]; exists {
 			val.Field(attrValueRange).Set(reflect.ValueOf(attr.Expr.Range()))
 		}
-
+		fmt.Println(name, field.Type.String(), fieldV.Type().String(), attrType.String())
 		switch {
 		case attrType.AssignableTo(field.Type):
 			fieldV.Set(reflect.ValueOf(attr))
@@ -156,6 +156,7 @@ func DecodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value, 
 		ty := field.Type
 		isSlice := false
 		isPtr := false
+		isMap := false
 		if ty.Kind() == reflect.Slice {
 			isSlice = true
 			ty = ty.Elem()
@@ -164,8 +165,16 @@ func DecodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value, 
 			isPtr = true
 			ty = ty.Elem()
 		}
+		if ty.Kind() == reflect.Map {
+			isMap = true
+			ty = ty.Elem()
+			if ty.Kind() == reflect.Ptr {
+				isPtr = true
+				ty = ty.Elem()
+			}
+		}
 
-		if len(blocks) > 1 && !isSlice {
+		if len(blocks) > 1 && !isSlice && !isMap {
 			diags = append(diags, &hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("Duplicate %s block", typeName),
@@ -179,7 +188,7 @@ func DecodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value, 
 		}
 
 		if len(blocks) == 0 {
-			if isSlice || isPtr {
+			if isSlice || isPtr || isMap {
 				if val.Field(fieldIdx).IsNil() {
 					val.Field(fieldIdx).Set(reflect.Zero(field.Type))
 				}
@@ -230,7 +239,54 @@ func DecodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value, 
 			}
 
 			val.Field(fieldIdx).Set(sli)
+		case isMap:
+			elemType := ty
+			if isPtr {
+				elemType = reflect.PointerTo(ty)
+			}
+			sli := val.Field(fieldIdx)
+			if sli.IsNil() {
+				sli = reflect.MakeMap(reflect.MapOf(reflect.TypeOf(""), elemType))
+			}
+// "reflect.Value.SetMapIndex: value of type struct { RequestsPerSecond int \"json:\\\"requests_per_second\\\" hcl:\\\"requests_per_second\\\"\"; Burst int \"json:\\\"burst\\\" hcl:\\\"burst,optional\\\"\"; Ips []string \"json:\\\"ips\\\" hcl:\\\"ips,optional\\\"\" } is not assignable to type *struct { RequestsPerSecond int \"json:\\\"requests_per_second\\\" hcl:\\\"requests_per_second\\\"\"; Burst int \"json:\\\"burst\\\" hcl:\\\"burst,optional\\\"\"; Ips []string \"json:\\\"ips\\\" hcl:\\\"ips,optional\\\"\" }"
+			for _, block := range blocks {
+				keyname := block.Labels[0]
+				if isPtr {
+					// if i >= sli.Len() {
+					// 	sli = reflect.Append(sli, reflect.New(ty))
+					// }
+					// v := sli.MapIndex(reflect.ValueOf(keyname))
+					// // v := sli.Index(i)
+					// if v.IsNil() {
+					// }
+					v := reflect.New(ty)
+					fmt.Println("decodeBodyToValue", v.Type().String())
 
+					diags = append(diags, decodeBodyToValue(block.Body, ctx, v.Elem())...)
+					fmt.Println("decodeBodyToValue a", v.Elem().Type().String())
+					fmt.Println("decodeBodyToValue b", sli.Type().String())
+					fmt.Println("decodeBodyToValue c", v.Type().String())
+					sli.SetMapIndex(reflect.ValueOf(keyname), v)
+				} else {
+					// if i >= sli.Len() {
+					// 	sli.MapIndex(reflect.ValueOf(keyname)).Set(v)
+
+					// 	sli = reflect.Append(sli, reflect.Indirect(reflect.New(ty)))
+					// }
+					v := sli.MapIndex(reflect.ValueOf(keyname))
+					if !v.IsValid() {
+						v = reflect.New(ty)
+					}
+					diags = append(diags, decodeBodyToValue(block.Body, ctx, v)...)
+					sli.MapIndex(reflect.ValueOf(keyname)).Set(v)
+				}
+			}
+
+			if sli.Len() > len(blocks) {
+				sli.SetLen(len(blocks))
+			}
+
+			val.Field(fieldIdx).Set(sli)
 		default:
 			block := blocks[0]
 			if isPtr {
@@ -241,7 +297,7 @@ func DecodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value, 
 				diags = append(diags, decodeBlockToValue(block, ctx, v.Elem())...)
 				val.Field(fieldIdx).Set(v)
 			} else {
-				diags = append(diags, decodeBlockToValue(block, ctx, val.Field(fieldIdx))...)
+							diags = append(diags, decodeBlockToValue(block, ctx, val.Field(fieldIdx))...)
 			}
 
 		}
@@ -252,6 +308,8 @@ func DecodeBodyToStruct(body hcl.Body, ctx *hcl.EvalContext, val reflect.Value, 
 }
 
 func decodeBodyToMap(body hcl.Body, ctx *hcl.EvalContext, v reflect.Value) hcl.Diagnostics {
+
+	fmt.Println("decodeBodyToMap", v.Type().String())
 	attrs, diags := body.JustAttributes()
 	if attrs == nil {
 		return diags
@@ -267,7 +325,8 @@ func decodeBodyToMap(body hcl.Body, ctx *hcl.EvalContext, v reflect.Value) hcl.D
 			mv.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(attr.Expr))
 		default:
 			ev := reflect.New(v.Type().Elem())
-			diags = append(diags, DecodeExpression(attr.Expr, ctx, ev.Interface())...)
+			// this just triggers an error, no logical reason for it
+			// diags = append(diags, DecodeExpression(attr.Expr, ctx, ev.Interface())...)
 			mv.SetMapIndex(reflect.ValueOf(k), ev.Elem())
 		}
 	}
@@ -277,13 +336,59 @@ func decodeBodyToMap(body hcl.Body, ctx *hcl.EvalContext, v reflect.Value) hcl.D
 	return diags
 }
 
+// func decodeBlockToMapValue(block *hcl.Block, ctx *hcl.EvalContext, v reflect.Value) hcl.Diagnostics {
+// 	diags := decodeBodyToValue(block.Body, ctx, v)
+// 	// wrap tupe 
+// 	blockTags := getFieldTags(v.Type())
+
+// }
+
 func decodeBlockToValue(block *hcl.Block, ctx *hcl.EvalContext, v reflect.Value) hcl.Diagnostics {
 	diags := decodeBodyToValue(block.Body, ctx, v)
 
 	blockTags := getFieldTags(v.Type())
+	// if we have a ___key, we need to set the map index to the value of the map
+	// for li1, _ := range block.Labels {
+	// 	lfieldName := blockTags.Labels[li1].Name
+	// 	if lfieldName == "___key" {
+	// 		return diags
+	// 		// fmt.Println("keyv", keyv)
+	// 		// pp.Println("v", v.Interface())
+
+	// 		// realv := v.MapIndex(reflect.ValueOf(keyv))
+	// 		// // v.MapIndex(reflect.ValueOf(keyv))
+	// 		// for li, lv := range block.Labels {
+	// 		// 	fmt.Println(li, lv)
+	// 		// 	lfieldIdx1 := blockTags.Labels[li].FieldIndex
+	// 		// 	lfieldName1 := blockTags.Labels[li].Name
+	// 		// 	if lfieldName1 == "___key" {
+	// 		// 		continue
+	// 		// 	}
+		
+				
+	// 		// 	// if lfieldName == "___key" {
+	// 		// 	// 	v.SetMapIndex(reflect.ValueOf(lv), reflect.ValueOf(v))
+	// 		// 	// 	continue
+	// 		// 	// }
+		
+	// 		// 	realv.Field(lfieldIdx1).Set(reflect.ValueOf(lv))
+		
+	// 		// 	if ix, exists := blockTags.LabelRange[lfieldName1]; exists {
+	// 		// 		realv.Field(ix).Set(reflect.ValueOf(block.LabelRanges[li]))
+	// 		// 	}
+	// 		// }
+	// 		// return diags
+	// 	}
+	// }
 	for li, lv := range block.Labels {
 		lfieldIdx := blockTags.Labels[li].FieldIndex
 		lfieldName := blockTags.Labels[li].Name
+
+		
+		// if lfieldName == "___key" {
+		// 	v.SetMapIndex(reflect.ValueOf(lv), reflect.ValueOf(v))
+		// 	continue
+		// }
 
 		v.Field(lfieldIdx).Set(reflect.ValueOf(lv))
 

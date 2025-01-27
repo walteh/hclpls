@@ -170,6 +170,9 @@
 		//===========================================
 		"svg.preview.background": "transparent",
 		"align-bicep.disallowed-language-ids": ["terraform", "go"],
-		"dockerfile-tidy.formatOnSave": true
+		"dockerfile-tidy.formatOnSave": true,
+		"debug.inlineValues": "off",
+		"debug.showVariableTypes": true,
+		"debug.console.wordWrap": true
 	}
 }

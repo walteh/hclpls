@@ -17,6 +17,7 @@ func TypedDiffExportedOnly[T any](want T, got T) string {
 	printer := pp.New()
 	printer.SetExportedOnly(true)
 	printer.SetColoringEnabled(false)
+
 	return diffTyped(printer, want, got)
 }
 
@@ -24,6 +25,7 @@ func TypedDiff[T any](want T, got T) string {
 	printer := pp.New()
 	printer.SetExportedOnly(false)
 	printer.SetColoringEnabled(false)
+
 	return diffTyped(printer, want, got)
 }
 
@@ -59,9 +61,9 @@ func diffTyped[T any](printer *pp.PrettyPrinter, want T, got T) string {
 		got := ConvolutedFormatReflectValue(g)
 		return diffTyped[any](printer, want, got)
 	case string:
-		abc = diffd(any(got).(string), any(want).(string))
+		abc = diffd(any(want).(string), any(got).(string))
 	default:
-		abc = diffd(printer.Sprint(got), printer.Sprint(want))
+		abc = diffd(printer.Sprint(want), printer.Sprint(got))
 	}
 	if abc == "" {
 		return ""
@@ -78,27 +80,35 @@ func diffTyped[T any](printer *pp.PrettyPrinter, want T, got T) string {
 
 	abc = strings.ReplaceAll(abc, "--- Expected", fmt.Sprintf("%s %s [%s]", color.New(color.Faint).Sprint("---"), color.New(color.FgRed).Sprint("expected"), color.New(color.FgRed, color.Bold).Sprint("exp")))
 	abc = strings.ReplaceAll(abc, "+++ Actual", fmt.Sprintf("%s %s [%s]", color.New(color.Faint).Sprint("+++"), color.New(color.FgBlue).Sprint("actual"), color.New(color.FgBlue, color.Bold).Sprint("act")))
-	hit := false
-	realign := []string{}
-	for _, found := range strings.Split(abc, "\n") {
-		if strings.HasPrefix(found, "-") {
-			realign = append(realign, expectedPrefix+color.New(color.FgRed).Sprint(found[1:]))
-		} else if strings.HasPrefix(found, "+") {
-			realign = append(realign, actualPrefix+color.New(color.FgBlue).Sprint(found[1:]))
+
+	realignmain := []string{}
+	for i, spltz := range strings.Split(abc, "\n@@") {
+		if i == 0 {
+			realignmain = append(realignmain, spltz)
 		} else {
-			if hit {
-				realign = append(realign, color.New(color.Faint).Sprint(strings.Repeat(" ", 8)+found))
-			} else {
-				realign = append(realign, color.New(color.Faint).Sprint(found))
+			first := ""
+
+			realign := []string{}
+			for j, found := range strings.Split(spltz, "\n") {
+				if j == 0 {
+					first = color.New(color.Faint).Sprint("@@" + found)
+				} else {
+					if strings.HasPrefix(found, "-") {
+						realign = append(realign, expectedPrefix+color.New(color.FgRed).Sprint(found[1:]))
+					} else if strings.HasPrefix(found, "+") {
+						realign = append(realign, actualPrefix+color.New(color.FgBlue).Sprint(found[1:]))
+					} else {
+						realign = append(realign, color.New(color.Faint).Sprint(strings.Repeat(" ", 8)+found))
+					}
+				}
 			}
-			if strings.HasPrefix(found, "@@") {
-				hit = true
-			}
+
+			realignmain = append(realignmain, first)
+			realignmain = append(realignmain, realign...)
 		}
 	}
-
 	str := "\n"
-	str += strings.Join(realign, "\n")
+	str += strings.Join(realignmain, "\n")
 
 	return str
 }
